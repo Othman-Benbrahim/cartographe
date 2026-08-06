@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Cartographe",
+  "version": "0.1.0",
+  "description": "Cartographie la trajectoire d'investigation dans la litterature scientifique : le noeud est une requete, pas un article.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cartographe@local",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://api.semanticscholar.org/*",
+    "https://api.crossref.org/*",
+    "https://api.opencitations.net/*",
+    "https://api.openalex.org/*"
+  ],
+  "action": {
+    "default_title": "Cartographe",
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    }
+  },
+  "sidebar_action": {
+    "default_title": "Cartographe",
+    "default_panel": "ui/panel.html",
+    "default_icon": {
+      "48": "icons/icon-48.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  }
+}
