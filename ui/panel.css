@@ -1,0 +1,434 @@
+/*
+  Cartographe — carte hydrographique.
+
+  Monospace intégral : le §11 fait de la chaîne brute une donnée canonique,
+  jamais réécrite. `retraction` et `retractions` sont deux actes distincts ;
+  une chasse fixe rend la différence d'un caractère lisible au premier coup
+  d'œil. La hiérarchie passe par la taille, la graisse et l'interlettrage,
+  jamais par un changement de famille.
+
+  Signature : la hachure. Ce qui n'est pas mesuré n'est pas pâle, il est tramé.
+*/
+
+:root {
+  --paper:      #E8EDE9;
+  --paper-deep: #DBE3DE;
+  --ink:        #12292F;
+  --ink-soft:   #4A6068;
+  --rule:       #9DB0B2;
+  --sounded:    #0F6E7D;
+  --sounded-lo: #7FB3BB;
+  --hazard:     #9E2A2B;
+  --focus:      #0F6E7D;
+
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --gap: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      #0F1A1D;
+    --paper-deep: #16252A;
+    --ink:        #DCE7E4;
+    --ink-soft:   #90A6AB;
+    --rule:       #3D555C;
+    --sounded:    #4FB3C4;
+    --sounded-lo: #2A5A63;
+    --hazard:     #E06A60;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font: 13px/1.45 var(--mono);
+  color: var(--ink);
+  background: var(--paper);
+  /* Trame de fond : filets de sonde, très discrets. */
+  background-image: repeating-linear-gradient(
+    0deg, transparent 0 23px, color-mix(in srgb, var(--rule) 18%, transparent) 23px 24px);
+}
+
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- barre */
+
+.bar {
+  padding: var(--gap);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+#query-form {
+  display: flex;
+  gap: 8px;
+}
+
+#q {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+#q::placeholder { color: var(--ink-soft); }
+
+button {
+  font: inherit;
+  padding: 8px 12px;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+button:hover { background: var(--sounded); border-color: var(--sounded); }
+button[disabled] { opacity: 0.45; cursor: progress; }
+
+:where(a, button, input, summary):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.echo {
+  margin: 8px 0 0;
+  min-height: 1.45em;
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+
+.echo b { color: var(--ink); font-weight: 600; }
+
+/* ---------------------------------------------------------------- scène */
+
+main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(220px, 1fr) auto;
+}
+
+@media (min-width: 720px) {
+  main {
+    grid-template-columns: 1fr 300px;
+    grid-template-rows: 1fr;
+  }
+  .rail { border-left: 1px solid var(--rule); border-top: 0; overflow-y: auto; }
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  background: var(--paper-deep);
+}
+
+#graph, #veil {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#veil { pointer-events: none; }
+
+.empty {
+  position: absolute;
+  inset: auto 24px 24px 24px;
+  margin: 0;
+  max-width: 46ch;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--rule);
+  padding-left: 10px;
+}
+
+.stage[data-populated="true"] .empty { display: none; }
+
+/* ---------------------------------------------------------------- rail */
+
+.rail {
+  border-top: 1px solid var(--rule);
+  padding: var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--paper);
+}
+
+fieldset.filters {
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+legend {
+  padding: 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.filters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Le rang de priorité du §3 est une donnée, pas une décoration : il dit quels
+   liens sont fiables et lesquels sont plausibles. Il reste affiché. */
+.tier {
+  margin-left: auto;
+  min-width: 16px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+}
+
+.swatch {
+  width: 14px; height: 14px;
+  display: inline-block;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  vertical-align: -3px;
+}
+
+.swatch.sounded { background: var(--sounded); border-color: var(--sounded); }
+.swatch.hazard  { background: var(--hazard); border-color: var(--hazard); }
+.swatch.hatched {
+  background-image: repeating-linear-gradient(
+    45deg, var(--rule) 0 1px, transparent 1px 4px);
+}
+
+/* ------------------------------------------------------------ inspecteur */
+
+.inspector {
+  flex: 1;
+  min-height: 90px;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-deep);
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.inspector .hint { margin: 0; color: var(--ink-soft); }
+
+.inspector h2 {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.inspector .raw {
+  display: block;
+  padding: 6px 8px;
+  margin: 0 0 8px;
+  background: var(--paper);
+  border-left: 2px solid var(--sounded);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inspector dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
+.inspector dt { color: var(--ink-soft); font-size: 11px; }
+.inspector dd { margin: 0; font-size: 11.5px; word-break: break-word; }
+
+.inspector .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.inspector .actions button { padding: 5px 8px; font-size: 11px; }
+
+.flag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 6px 0;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--hazard);
+  border-radius: 2px;
+}
+
+/* Une version n'est pas une alerte : même forme que le drapeau de rétractation,
+   mais dans l'encre du document, jamais dans le rouge de danger. */
+.flag.version {
+  color: var(--paper);
+  background: var(--ink-soft);
+}
+
+.unmeasured {
+  padding: 6px 8px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  background-image: repeating-linear-gradient(
+    45deg, color-mix(in srgb, var(--rule) 35%, transparent) 0 1px, transparent 1px 5px);
+}
+
+/* --------------------------------------------------------------- panneaux */
+
+details {
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+summary {
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+details[open] summary { border-bottom: 1px solid var(--rule); }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px;
+}
+
+.grid .wide { grid-column: 1 / -1; }
+.grid button { padding: 6px; font-size: 11px; }
+
+/* La restauration remplace la base : contour au lieu d'aplat, pour qu'elle ne
+   se confonde jamais avec un export au survol rapide. */
+.grid .restore {
+  color: var(--ink);
+  background: transparent;
+  border: 1px dashed var(--ink-soft);
+}
+
+.grid .restore:hover {
+  color: var(--paper);
+  background: var(--hazard);
+  border-color: var(--hazard);
+}
+
+.settings label {
+  display: block;
+  padding: 8px 10px 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.settings input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.settings #save-keys { margin: 10px; }
+
+.note {
+  margin: 0;
+  padding: 0 10px 10px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.status {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+}
+
+.status[data-kind="error"] { color: var(--hazard); }
+
+/* ---------------------------------------------------------- confirmation */
+
+dialog {
+  max-width: 34ch;
+  padding: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  font: inherit;
+}
+
+dialog::backdrop { background: color-mix(in srgb, var(--ink) 55%, transparent); }
+
+dialog h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+dialog dl {
+  margin: 0 0 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  font-size: 11.5px;
+}
+
+dialog dt { color: var(--ink-soft); }
+dialog dd { margin: 0; }
+
+dialog .warn {
+  margin: 0 0 12px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--hazard);
+  border-left: 2px solid var(--hazard);
+}
+
+dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
+dialog .danger { background: var(--hazard); border-color: var(--hazard); }
+dialog .danger:hover { background: var(--hazard); filter: brightness(1.15); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

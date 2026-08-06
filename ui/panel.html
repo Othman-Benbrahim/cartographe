@@ -1,1 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartographe</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<header class="bar">
+  <form id="query-form" autocomplete="off">
+    <label class="sr" for="q">Requête</label>
+    <input id="q" name="q" type="text" placeholder="tapez une requête, ou collez un DOI" spellcheck="false">
+    <button type="submit" id="go">Émettre</button>
+  </form>
+  <p id="echo" class="echo" aria-live="polite"></p>
+</header>
 
+<main>
+  <section class="stage">
+    <div id="graph"></div>
+    <canvas id="veil" aria-hidden="true"></canvas>
+    <p id="empty" class="empty">Aucune requête émise. Le graphe se construit à partir d'actes, pas de concepts : chaque requête soumise devient un nœud définitif.</p>
+  </section>
+
+  <aside class="rail">
+    <fieldset class="filters">
+      <legend>Arêtes</legend>
+      <label><input type="checkbox" data-edge="result_overlap" checked> recouvrement <span class="tier">1</span></label>
+      <label><input type="checkbox" data-edge="reformulation" checked> reformulation <span class="tier">1</span></label>
+      <label><input type="checkbox" data-edge="result_of"> appartenance <span class="tier">1</span></label>
+      <label><input type="checkbox" data-edge="biblio_coupling" checked> couplage <span class="tier">2</span></label>
+      <label><input type="checkbox" data-edge="citation"> citation <span class="tier">3</span></label>
+      <label><input type="checkbox" data-edge="version_of" checked> preprint → publié <span class="tier">3</span></label>
+    </fieldset>
+
+    <div class="key">
+      <span class="swatch sounded"></span> couverture mesurée
+      <span class="swatch hatched"></span> non mesurée
+      <span class="swatch hazard"></span> rétracté
+    </div>
+
+    <div id="inspector" class="inspector">
+      <p class="hint">Sélectionnez un nœud.</p>
+    </div>
+
+    <details class="exports">
+      <summary>Exporter</summary>
+      <div class="grid">
+        <button data-export="bibtex">BibTeX</button>
+        <button data-export="ris">RIS</button>
+        <button data-export="csl-json">CSL-JSON</button>
+        <button data-export="gexf">GEXF</button>
+        <button data-export="edges-csv">Arêtes CSV</button>
+        <button data-export="native">JSON natif</button>
+        <button data-export="markdown" class="wide">Markdown à wikilinks</button>
+        <button id="import-btn" class="wide restore">Restaurer un export natif…</button>
+        <button id="reset-btn" class="wide restore">Tout effacer…</button>
+        <input type="file" id="import-file" accept=".json,application/json" class="sr">
+      </div>
+      <p class="note">La restauration <b>remplace</b> le graphe entier par le contenu du fichier ; l'effacement le <b>vide</b>. Dans les deux cas, confirmation chiffrée d'abord, et jamais de fusion.</p>
+    </details>
+
+    <details class="settings">
+      <summary>Clés</summary>
+      <label>Semantic Scholar <input type="password" id="k-s2" placeholder="facultatif, recommandé"></label>
+      <label>OpenCitations <input type="password" id="k-oc" placeholder="jeton gratuit"></label>
+      <label>OpenAlex <input type="password" id="k-oa" placeholder="obligatoire depuis 02/2026"></label>
+      <button id="save-keys">Enregistrer</button>
+      <p class="note">Sans clé Semantic Scholar, les appels passent par un pool anonyme partagé entre toutes les installations. Ça tient en développement et se dégrade à l'échelle.</p>
+    </details>
+
+    <p id="status" class="status" aria-live="polite"></p>
+  </aside>
+</main>
+
+<dialog id="confirm-restore">
+  <h2 id="confirm-title">Remplacer le graphe</h2>
+  <dl id="confirm-body"></dl>
+  <p class="warn">Cette action est irréversible. Exportez d'abord si vous tenez au graphe actuel.</p>
+  <div class="actions">
+    <button id="confirm-cancel" autofocus>Annuler</button>
+    <button id="confirm-ok" class="danger">Remplacer</button>
+  </div>
+</dialog>
+
+<script type="module" src="panel.js"></script>
+</body>
+</html>
