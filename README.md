@@ -299,7 +299,7 @@ une texture d'objet, alors qu'elle doit se lire comme une absence de donnée.
 
 ## Licence
 
-À définir.
+GPL-3.0 license
 
 ## Note
 
